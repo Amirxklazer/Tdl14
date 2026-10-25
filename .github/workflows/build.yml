@@ -1,0 +1,41 @@
+# Place this file at .github/workflows/build.yml in your repo.
+# If your repo already has the Copilot-fixed build.yml with the pinned devkita64 tag, keep ITS `container:` image line
+# and just make sure the SDL2 install step below is present (it works with either pacman name).
+name: Build Ilot14 Island
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SDL2 for Switch
+        run: |
+          PAC=$(command -v dkp-pacman || command -v pacman)
+          echo "using package manager: $PAC"
+          $PAC -Sy --noconfirm switch-sdl2 || $PAC -S --noconfirm switch-sdl2
+          ls /opt/devkitpro/portlibs/switch/bin | head
+
+      - name: Build NRO
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          make -j"$(nproc)"
+
+      - name: Package
+        run: |
+          mkdir -p dist/switch/ilot14_island/music
+          cp ilot14_island.nro dist/switch/ilot14_island/ilot14_island.nro
+          echo "Optional: put menu.wav / day.wav / night.wav / minigame.wav in sdmc:/switch/ilot14_island/music/ to replace the soundtrack." > dist/switch/ilot14_island/music/README.txt
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ilot14_island
+          path: dist/
